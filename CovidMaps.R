@@ -4,8 +4,9 @@ library(sf)
 library(scales)
 library(leaflet)
 library(RColorBrewer)
+library(leafpop)
 
-setwd('C:/Users/phaedrus/Documents/R Projects/CovidMaps')
+setwd('C:/Users/phaedrus/Documents/RProjects/CovidMaps')
 
 url <- c("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv?_sm_au_=iVVqLPMMPWSDkHHq6jkjvKQBQqvNG")
 counties <- read.csv(url)
@@ -104,6 +105,25 @@ DeathsPal<-colorBin("RdYlGn", domain = FipsDeaths28Slope$outslopedeaths28,bins=8
 
 
 
+###making the plots  
+for(i in unique(na.omit(counties$fips))){  
+  temp<-counties%>%filter(fips==i)
+  
+  plotOut<-ggplot(temp)+
+    geom_point(aes(x=date,y=newcases,color='newcases'))+
+    geom_point(aes(x=date,y=newdeaths,color='newdeaths'))+
+    geom_smooth(aes(x=date,y=newcases),method='loess')+
+    geom_smooth(aes(x=date,y=newdeaths),method='loess')+
+    labs(title=paste0(temp$county,' ',temp$state,' -- As of  ', max(temp$date)), x="Date",y="Count")+
+    scale_color_discrete(name='Legend',
+                         breaks=c('newcases','newdeaths'),
+                         labels=c('Daily Cases', 'Daily Deaths'))+
+    theme_minimal()
+  ggsave(filename=paste0(i,".svg"),plot=plotOut,device="svg")
+}
+
+
+
 summaryStats <- counties%>%
   group_by(fips,county,state)%>%
   summarise(TotalCases = max(cases),
@@ -111,16 +131,19 @@ summaryStats <- counties%>%
   left_join(FipsCases14Slope,by=c("fips"))%>%
   left_join(FipsDeaths14Slope,by=c("fips"))%>%
   left_join(FipsCases28Slope,by=c("fips"))%>%
-  left_join(FipsDeaths28Slope,by=c("fips"))
+  left_join(FipsDeaths28Slope,by=c("fips"))%>%
+  mutate(plot = paste0("<img src=http://keithguilford.com/maps/",fips,".svg style='width:600px;height:500px;'>" ))
+
+
+
 
 countyShp$fips<-as.integer(as.character(countyShp$FIPS))
 
 countyShpJ<-countyShp%>%
-  left_join(summaryStats,by="fips")%>%
-  na.omit(fips)
+  left_join(summaryStats,by="fips")
 
 
-
+  
 leaflet(countyShpJ)%>%
   #addTiles()%>%
   addProviderTiles(providers$CartoDB.Positron)%>%
@@ -129,51 +152,56 @@ leaflet(countyShpJ)%>%
               fillColor = ~DeathsPal(countyShpJ$outslopedeaths28),
               highlightOptions = highlightOptions(color="white",weight = 2,
                                                   bringToFront = TRUE),
-              popup = ~paste0("<b>",NAME,", ",STATE_NAME,"<br>",
+              popup = ~paste0("<style> div.leaflet-popup-content {width:auto !important;}</style>",
+                              "<h3 style = width:600px;>",NAME,", ",STATE_NAME,"</h3>",
                               "<b>Total Cases:  ",TotalCases,"<br>",
                               "<b>Total Deaths:  ",TotalDeaths,"<br>",
                               "<b>28 Day Cases Trend:  ",round(slope.x.x,digits=3),"<br>",
                               "<b>28 Day Deaths Trend:  ",round(slope.y.y,digits=3),"<br>",
                               "<b>14 Day Cases Trend:  ",round(slope.x,digits=3),"<br>",
-                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>")) %>%
+                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>",plot)) %>%
+
   addPolygons(data=countyShpJ  ,color="#444444",weight = .1,smoothFactor = .5,
               opacity = .5, fillOpacity = .4 ,group = 'Deaths14',
               fillColor = ~DeathsPal(countyShpJ$outslopedeaths14),
               highlightOptions = highlightOptions(color="white",weight = 2,
                                                   bringToFront = TRUE),
-              popup = ~paste0("<b>",NAME,", ",STATE_NAME,"<br>",
+              popup = ~paste0("<style> div.leaflet-popup-content {width:auto !important;}</style>",
+                              "<h3 style = width:600px;>",NAME,", ",STATE_NAME,"</h3>",
                               "<b>Total Cases:  ",TotalCases,"<br>",
                               "<b>Total Deaths:  ",TotalDeaths,"<br>",
                               "<b>28 Day Cases Trend:  ",round(slope.x.x,digits=3),"<br>",
                               "<b>28 Day Deaths Trend:  ",round(slope.y.y,digits=3),"<br>",
                               "<b>14 Day Cases Trend:  ",round(slope.x,digits=3),"<br>",
-                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>")) %>%
+                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>",plot)) %>%
   
   addPolygons(data=countyShpJ  ,color="#444444",weight = .1,smoothFactor = .5,
               opacity = .5, fillOpacity = .4 ,
               fillColor = ~CasesPal(countyShpJ$outslopecases28), group = 'Cases28',
               highlightOptions = highlightOptions(color="white",weight = 2,
                                                   bringToFront = TRUE),
-              popup = ~paste0("<b>",NAME,", ",STATE_NAME,"<br>",
+              popup = ~paste0("<style> div.leaflet-popup-content {width:auto !important;}</style>",
+                              "<h3 style = width:600px;>",NAME,", ",STATE_NAME,"</h3>",
                               "<b>Total Cases:  ",TotalCases,"<br>",
                               "<b>Total Deaths:  ",TotalDeaths,"<br>",
                               "<b>28 Day Cases Trend:  ",round(slope.x.x,digits=3),"<br>",
                               "<b>28 Day Deaths Trend:  ",round(slope.y.y,digits=3),"<br>",
                               "<b>14 Day Cases Trend:  ",round(slope.x,digits=3),"<br>",
-                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>")) %>%
+                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>",plot)) %>%
   
   addPolygons(data=countyShpJ  ,color="#444444",weight = .1,smoothFactor = .5,
               opacity = .5, fillOpacity = .4 ,group = 'Cases14',
               fillColor = ~CasesPal(countyShpJ$outslopeCases14),
               highlightOptions = highlightOptions(color="white",weight = 2,
                                                   bringToFront = TRUE),
-              popup = ~paste0("<b>",NAME,", ",STATE_NAME,"<br>",
+              popup = ~paste0("<style> div.leaflet-popup-content {width:auto !important;}</style>",
+                              "<h3 style = width:600px;>",NAME,", ",STATE_NAME,"</h3>",
                               "<b>Total Cases:  ",TotalCases,"<br>",
                               "<b>Total Deaths:  ",TotalDeaths,"<br>",
                               "<b>28 Day Cases Trend:  ",round(slope.x.x,digits=3),"<br>",
                               "<b>28 Day Deaths Trend:  ",round(slope.y.y,digits=3),"<br>",
                               "<b>14 Day Cases Trend:  ",round(slope.x,digits=3),"<br>",
-                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>")) %>%
+                              "<b>14 Day Deaths Trend:  ",round(slope.y,digits=3),"<br>",plot)) %>%
 
   addLegend("bottomright",pal=DeathsPal,values = ~countyShpJ$outslopedeaths28, group = 'Deaths28',
             title = paste0("Past 28 Day Linear","<br>","Slope (Deaths)","<br>",
@@ -192,5 +220,4 @@ leaflet(countyShpJ)%>%
   hideGroup(group=c('Deaths28','Deaths14','Cases28'))
 
   
-  
-  
+ 
