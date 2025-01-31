@@ -1,4 +1,3 @@
-
 library(dplyr)
 library(ggplot2)
 library(sf)
@@ -21,7 +20,6 @@ counties$date <- as.Date(counties$date)
 
 ## fixing new york city into just one polygon to join to 
 counties$fips<-ifelse(counties$county == 'New York City', 999999, counties$fips)
-
 
 counties <- counties %>% group_by(state,county)%>%
   mutate (newcases = cases- lag(cases),
