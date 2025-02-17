@@ -57,8 +57,6 @@ nyprep<-st_as_sf(data.frame(
 ### putting New York back into the main DF 
 countyShp<-rbind(countyShp,nyprep)
 
-
-
 FipsCases14Slope<-data.frame(FIPS=integer(),slope=double())
 for (i in na.omit(unique(counties$fips))){
     tempDF <- counties %>%
